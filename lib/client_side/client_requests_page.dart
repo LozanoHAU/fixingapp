@@ -6,6 +6,7 @@ import '../requests_data/request_model.dart';
 import '../requests_data/requests_database.dart';
 import 'client_home_page.dart';
 import 'client_profile_page.dart';
+import 'client_request_details.dart';
 
 class ClientRequestsPage extends StatefulWidget {
   final User user;
@@ -172,7 +173,15 @@ class _ClientRequestsPageState extends State<ClientRequestsPage> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            _showRequestDetails(request);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ClientRequestDetailsPage(
+                              user: widget.user,
+                              request: request,
+                            ),
+                          ),
+                        ).then((_) => _loadRequests()); // refresh list on return
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.black,
@@ -243,142 +252,7 @@ class _ClientRequestsPageState extends State<ClientRequestsPage> {
     }
   }
 
-  void _showRequestDetails(Request request) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Request Details',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                ),
-                // Content
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDetailRow('Title', request.title),
-                        const SizedBox(height: 12),
-                        _buildDetailRow('Type', request.type),
-                        const SizedBox(height: 12),
-                        _buildDetailRow('Budget', 'PHP ${request.budget}'),
-                        const SizedBox(height: 12),
-                        _buildDetailRow('Priority', request.priority),
-                        const SizedBox(height: 12),
-                        _buildDetailRow('Status', request.status.toUpperCase()),
-                        const SizedBox(height: 12),
-                        _buildDetailRow('Created', request.createdAt.toString().split('.')[0]),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Description',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          request.description,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        if (request.imagePaths.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Images',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
-                            ),
-                            itemCount: request.imagePaths.length,
-                            itemBuilder: (context, index) {
-                              return ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: _buildImage(request.imagePaths[index]),
-                              );
-                            },
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            '$label:',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[700],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   void _onNavItemTapped(int index) async {
     setState(() {

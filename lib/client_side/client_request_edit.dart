@@ -9,11 +9,13 @@ import '../requests_data/requests_database.dart';
 class ClientRequestEditPage extends StatefulWidget {
   final String? serviceType;
   final User user;
+  final Request? existingRequest; // null = create new, non-null = edit
 
   const ClientRequestEditPage({
-    Key? key, 
+    Key? key,
     this.serviceType,
     required this.user,
+    this.existingRequest,
   }) : super(key: key);
 
   @override
@@ -28,9 +30,11 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
 
   String _selectedType = 'Plumbing';
   String _selectedPriority = 'Medium';
-  
-  final List<XFile> _selectedImages = []; 
+
+  final List<XFile> _selectedImages = [];
   final ImagePicker _picker = ImagePicker();
+
+  bool get _isEditing => widget.existingRequest != null;
 
   final List<String> _serviceTypes = [
     'Plumbing', 'Carpentry', 'Welding', 'Electrical', 'Painting', 'Masonry', 'Other',
@@ -43,8 +47,20 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.serviceType != null && _serviceTypes.contains(widget.serviceType)) {
-      _selectedType = widget.serviceType!;
+
+    if (_isEditing) {
+      // Pre-fill with existing request data
+      final r = widget.existingRequest!;
+      _titleController.text = r.title;
+      _budgetController.text = r.budget;
+      _descriptionController.text = r.description;
+      _selectedType = _serviceTypes.contains(r.type) ? r.type : 'Plumbing';
+      _selectedPriority = _priorities.contains(r.priority) ? r.priority : 'Medium';
+      // Note: existing image paths are kept separately; we don't reload XFile from path
+    } else {
+      if (widget.serviceType != null && _serviceTypes.contains(widget.serviceType)) {
+        _selectedType = widget.serviceType!;
+      }
     }
   }
 
@@ -59,11 +75,8 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
   Future<void> _pickImages() async {
     try {
       final List<XFile> images = await _picker.pickMultiImage();
-
       if (images.isNotEmpty) {
-        setState(() {
-          _selectedImages.addAll(images);
-        });
+        setState(() => _selectedImages.addAll(images));
       }
     } catch (e) {
       if (mounted) {
@@ -77,11 +90,8 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
   Future<void> _takePhoto() async {
     try {
       final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
-
       if (photo != null) {
-        setState(() {
-          _selectedImages.add(photo);
-        });
+        setState(() => _selectedImages.add(photo));
       }
     } catch (e) {
       if (mounted) {
@@ -93,23 +103,25 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
   }
 
   void _removeImage(int index) {
-    setState(() {
-      _selectedImages.removeAt(index);
-    });
+    setState(() => _selectedImages.removeAt(index));
   }
 
   Widget _displayImage(XFile file, {BoxFit fit = BoxFit.cover}) {
     if (kIsWeb) {
-      return Image.network(
-        file.path,
-        fit: fit,
-        errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image)),
-      );
+      return Image.network(file.path, fit: fit,
+          errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image)));
     } else {
-      return Image.file(
-        File(file.path),
-        fit: fit,
-      );
+      return Image.file(File(file.path), fit: fit);
+    }
+  }
+
+  Widget _displayImageFromPath(String path, {BoxFit fit = BoxFit.cover}) {
+    if (kIsWeb) {
+      return Image.network(path, fit: fit,
+          errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image)));
+    } else {
+      return Image.file(File(path), fit: fit,
+          errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image)));
     }
   }
 
@@ -126,27 +138,18 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
               ListTile(
                 leading: const Icon(Icons.photo_library),
                 title: const Text('Choose from gallery'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImages();
-                },
+                onTap: () { Navigator.pop(context); _pickImages(); },
               ),
               ListTile(
                 leading: const Icon(Icons.photo_camera),
                 title: const Text('Take a photo'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _takePhoto();
-                },
+                onTap: () { Navigator.pop(context); _takePhoto(); },
               ),
               if (_selectedImages.isNotEmpty)
                 ListTile(
                   leading: const Icon(Icons.visibility),
-                  title: const Text('View images'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showImagePreview();
-                  },
+                  title: const Text('View new images'),
+                  onTap: () { Navigator.pop(context); _showImagePreview(); },
                 ),
             ],
           ),
@@ -166,7 +169,7 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 AppBar(
-                  title: Text('Images (${_selectedImages.length})'),
+                  title: Text('New Images (${_selectedImages.length})'),
                   backgroundColor: const Color(0xFF2D7A5E),
                   foregroundColor: Colors.white,
                   leading: IconButton(
@@ -178,9 +181,7 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
                   child: GridView.builder(
                     padding: const EdgeInsets.all(8),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
+                      crossAxisCount: 2, crossAxisSpacing: 8, mainAxisSpacing: 8,
                     ),
                     itemCount: _selectedImages.length,
                     itemBuilder: (context, index) {
@@ -192,23 +193,17 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
                             child: _displayImage(_selectedImages[index]),
                           ),
                           Positioned(
-                            top: 4,
-                            right: 4,
+                            top: 4, right: 4,
                             child: GestureDetector(
                               onTap: () {
                                 _removeImage(index);
-                                if (_selectedImages.isEmpty) {
-                                  Navigator.pop(context);
-                                } else {
-                                  Navigator.pop(context);
-                                  _showImagePreview();
-                                }
+                                Navigator.pop(context);
+                                if (_selectedImages.isNotEmpty) _showImagePreview();
                               },
                               child: Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
+                                  color: Colors.red, shape: BoxShape.circle,
                                 ),
                                 child: const Icon(Icons.close, color: Colors.white, size: 20),
                               ),
@@ -229,42 +224,78 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
 
   void _saveRequest() {
     if (_formKey.currentState!.validate()) {
-      // Create new request with all user profile details
-      final newRequest = Request(
-        id: 'req_${DateTime.now().millisecondsSinceEpoch}',
-        title: _titleController.text.trim(),
-        type: _selectedType,
-        budget: _budgetController.text.trim(),
-        description: _descriptionController.text.trim(),
-        priority: _selectedPriority,
-        imagePaths: _selectedImages.map((img) => img.path).toList(),
-        createdAt: DateTime.now(),
-        userId: widget.user.id,
-        userName: widget.user.name,
-        userEmail: widget.user.email,
-        userPhone: widget.user.phone,
-        userGender: widget.user.gender,
-        userBirthdate: widget.user.birthdate,
-        userCity: widget.user.city,
-        userBarangay: widget.user.barangay,
-        userAddress: widget.user.address,
-        status: 'pending',
-      );
+      if (_isEditing) {
+        // Merge new image paths with any existing ones
+        final existingPaths = widget.existingRequest!.imagePaths;
+        final newPaths = _selectedImages.map((img) => img.path).toList();
+        final allPaths = [...existingPaths, ...newPaths];
 
-      // Save to database
-      RequestsDatabase.addRequest(newRequest);
+        final updatedRequest = widget.existingRequest!.copyWith(
+          title: _titleController.text.trim(),
+          type: _selectedType,
+          budget: _budgetController.text.trim(),
+          description: _descriptionController.text.trim(),
+          priority: _selectedPriority,
+          imagePaths: allPaths,
+        );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Request saved successfully!'),
-          backgroundColor: Color(0xFF2D7A5E),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) Navigator.pop(context);
-      });
+        final success = RequestsDatabase.updateRequest(updatedRequest);
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Request updated successfully!'),
+              backgroundColor: Color(0xFF2D7A5E),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) Navigator.pop(context);
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to update request.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else {
+        // Create new request
+        final newRequest = Request(
+          id: 'req_${DateTime.now().millisecondsSinceEpoch}',
+          title: _titleController.text.trim(),
+          type: _selectedType,
+          budget: _budgetController.text.trim(),
+          description: _descriptionController.text.trim(),
+          priority: _selectedPriority,
+          imagePaths: _selectedImages.map((img) => img.path).toList(),
+          createdAt: DateTime.now(),
+          userId: widget.user.id,
+          userName: widget.user.name,
+          userEmail: widget.user.email,
+          userPhone: widget.user.phone,
+          userGender: widget.user.gender,
+          userBirthdate: widget.user.birthdate,
+          userCity: widget.user.city,
+          userBarangay: widget.user.barangay,
+          userAddress: widget.user.address,
+          status: 'pending',
+        );
+
+        RequestsDatabase.addRequest(newRequest);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Request saved successfully!'),
+            backgroundColor: Color(0xFF2D7A5E),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) Navigator.pop(context);
+        });
+      }
     }
   }
 
@@ -327,17 +358,31 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Existing image paths from the request (when editing)
+    final existingPaths = widget.existingRequest?.imagePaths ?? [];
+    // The preview image: prefer new, then existing
+    final hasNewImages = _selectedImages.isNotEmpty;
+    final hasExistingImages = existingPaths.isNotEmpty;
+
     return Scaffold(
       backgroundColor: const Color(0xFFE8F5F1),
       appBar: AppBar(
         backgroundColor: const Color(0xFFE8F5F1),
         elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black), onPressed: () => Navigator.pop(context)),
-        title: const Text('Request edit', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 18)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          _isEditing ? 'Edit Request' : 'Request edit',
+          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 18),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
-            child: Center(child: Text('Fixit', style: TextStyle(color: Colors.grey[700], fontSize: 14, fontWeight: FontWeight.w500))),
+            child: Center(
+              child: Text('Fixit', style: TextStyle(color: Colors.grey[700], fontSize: 14, fontWeight: FontWeight.w500)),
+            ),
           ),
         ],
       ),
@@ -366,8 +411,12 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
                   child: Container(
                     width: double.infinity,
                     height: 160,
-                    decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[300]!)),
-                    child: _selectedImages.isEmpty
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: (!hasNewImages && !hasExistingImages)
                         ? Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -383,29 +432,40 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
                                 child: SizedBox(
                                   width: double.infinity,
                                   height: double.infinity,
-                                  child: _displayImage(_selectedImages[0]),
-                                )
+                                  child: hasNewImages
+                                      ? _displayImage(_selectedImages[0])
+                                      : _displayImageFromPath(existingPaths[0]),
+                                ),
                               ),
-                              if (_selectedImages.length > 1)
+                              // Show total count badge
+                              if ((hasNewImages ? _selectedImages.length : 0) + existingPaths.length > 1)
                                 Positioned(
-                                  top: 8,
-                                  right: 8,
+                                  top: 8, right: 8,
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), borderRadius: BorderRadius.circular(12)),
-                                    child: Text('+${_selectedImages.length - 1} more', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.7),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '+${(hasNewImages ? _selectedImages.length : 0) + existingPaths.length - 1} more',
+                                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
                                   ),
                                 ),
                               Positioned.fill(
                                 child: Container(
-                                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.3), borderRadius: BorderRadius.circular(8)),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.3),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                   child: const Center(
                                     child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
                                         Icon(Icons.photo_library, color: Colors.white, size: 32),
                                         SizedBox(height: 4),
-                                        Text('Tap to manage images', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
+                                        Text('Tap to add more images', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
                                       ],
                                     ),
                                   ),
@@ -420,8 +480,17 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _saveRequest,
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D7A5E), foregroundColor: Colors.white, elevation: 0, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                    child: const Text('Save Request', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2D7A5E),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text(
+                      _isEditing ? 'Save Changes' : 'Save Request',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 40),
