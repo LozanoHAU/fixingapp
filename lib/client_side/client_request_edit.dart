@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/foundation.dart'; // Import this for kIsWeb
+import 'package:flutter/foundation.dart';
+import '../users_data/user_model.dart';
+import '../requests_data/request_model.dart';
+import '../requests_data/requests_database.dart';
 
 class ClientRequestEditPage extends StatefulWidget {
   final String? serviceType;
+  final User user;
 
-  const ClientRequestEditPage({Key? key, this.serviceType}) : super(key: key);
+  const ClientRequestEditPage({
+    Key? key, 
+    this.serviceType,
+    required this.user,
+  }) : super(key: key);
 
   @override
   State<ClientRequestEditPage> createState() => _ClientRequestEditPageState();
@@ -21,7 +29,6 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
   String _selectedType = 'Plumbing';
   String _selectedPriority = 'Medium';
   
-  // CHANGED: Use XFile instead of File to support Web
   final List<XFile> _selectedImages = []; 
   final ImagePicker _picker = ImagePicker();
 
@@ -55,7 +62,6 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
 
       if (images.isNotEmpty) {
         setState(() {
-          // CHANGED: Add XFile directly, do not convert to File
           _selectedImages.addAll(images);
         });
       }
@@ -74,7 +80,6 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
 
       if (photo != null) {
         setState(() {
-          // CHANGED: Add XFile directly
           _selectedImages.add(photo);
         });
       }
@@ -93,17 +98,14 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
     });
   }
 
-  // HELPER WIDGET: Handles the difference between Web and Mobile
   Widget _displayImage(XFile file, {BoxFit fit = BoxFit.cover}) {
     if (kIsWeb) {
-      // On Web, the 'path' is a Blob URL, so we use Image.network
       return Image.network(
         file.path,
         fit: fit,
         errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image)),
       );
     } else {
-      // On Mobile/Desktop, we use Image.file
       return Image.file(
         File(file.path),
         fit: fit,
@@ -187,7 +189,6 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            // CHANGED: Use helper method
                             child: _displayImage(_selectedImages[index]),
                           ),
                           Positioned(
@@ -228,6 +229,31 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
 
   void _saveRequest() {
     if (_formKey.currentState!.validate()) {
+      // Create new request with all user profile details
+      final newRequest = Request(
+        id: 'req_${DateTime.now().millisecondsSinceEpoch}',
+        title: _titleController.text.trim(),
+        type: _selectedType,
+        budget: _budgetController.text.trim(),
+        description: _descriptionController.text.trim(),
+        priority: _selectedPriority,
+        imagePaths: _selectedImages.map((img) => img.path).toList(),
+        createdAt: DateTime.now(),
+        userId: widget.user.id,
+        userName: widget.user.name,
+        userEmail: widget.user.email,
+        userPhone: widget.user.phone,
+        userGender: widget.user.gender,
+        userBirthdate: widget.user.birthdate,
+        userCity: widget.user.city,
+        userBarangay: widget.user.barangay,
+        userAddress: widget.user.address,
+        status: 'pending',
+      );
+
+      // Save to database
+      RequestsDatabase.addRequest(newRequest);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Request saved successfully!'),
@@ -235,6 +261,7 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
           duration: Duration(seconds: 2),
         ),
       );
+      
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) Navigator.pop(context);
       });
@@ -353,7 +380,6 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                // CHANGED: Use helper method
                                 child: SizedBox(
                                   width: double.infinity,
                                   height: double.infinity,
@@ -373,12 +399,12 @@ class _ClientRequestEditPageState extends State<ClientRequestEditPage> {
                               Positioned.fill(
                                 child: Container(
                                   decoration: BoxDecoration(color: Colors.black.withOpacity(0.3), borderRadius: BorderRadius.circular(8)),
-                                  child: Center(
+                                  child: const Center(
                                     child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        const Icon(Icons.photo_library, color: Colors.white, size: 32),
-                                        const SizedBox(height: 4),
+                                        Icon(Icons.photo_library, color: Colors.white, size: 32),
+                                        SizedBox(height: 4),
                                         Text('Tap to manage images', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
                                       ],
                                     ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'client_profile_page.dart';
 import 'client_request_edit.dart';
+import 'client_requests_page.dart';
 import '../users_data/user_model.dart';
 import '../sign_in_page.dart';
 import '../users_data/users_database.dart';
@@ -104,13 +105,16 @@ class _ClientHomePageState extends State<ClientHomePage> {
         // Already on home, do nothing
         break;
       case 1: // Requests
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Requests coming soon!'),
-            backgroundColor: Colors.black,
-            duration: Duration(seconds: 1),
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ClientRequestsPage(user: currentUser),
           ),
         );
+        // Reset selection back to home after returning
+        setState(() {
+          _selectedIndex = 0;
+        });
         break;
       case 2: // Inbox
         ScaffoldMessenger.of(context).showSnackBar(
@@ -120,6 +124,10 @@ class _ClientHomePageState extends State<ClientHomePage> {
             duration: Duration(seconds: 1),
           ),
         );
+        // Reset selection back to home
+        setState(() {
+          _selectedIndex = 0;
+        });
         break;
       case 3: // Profile
         await Navigator.push(
@@ -130,6 +138,10 @@ class _ClientHomePageState extends State<ClientHomePage> {
         );
         // Refresh user data after returning from profile
         _refreshUser();
+        // Reset selection back to home
+        setState(() {
+          _selectedIndex = 0;
+        });
         break;
     }
   }
@@ -391,11 +403,10 @@ class _ClientHomePageState extends State<ClientHomePage> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Create Request coming soon!'),
-                            backgroundColor: Colors.black,
-                            duration: Duration(seconds: 1),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ClientRequestEditPage(user: currentUser),
                           ),
                         );
                       },
@@ -421,11 +432,10 @@ class _ClientHomePageState extends State<ClientHomePage> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('My Requests coming soon!'),
-                            backgroundColor: Colors.black,
-                            duration: Duration(seconds: 1),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ClientRequestsPage(user: currentUser),
                           ),
                         );
                       },
@@ -479,8 +489,9 @@ class _ClientHomePageState extends State<ClientHomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ClientRequestEditPage(
+                          builder: (context) => ClientRequestEditPage(
                             serviceType: 'Carpentry',
+                            user: currentUser,
                           ),
                         ),
                       );
@@ -494,8 +505,9 @@ class _ClientHomePageState extends State<ClientHomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ClientRequestEditPage(
+                          builder: (context) => ClientRequestEditPage(
                             serviceType: 'Welding',
+                            user: currentUser,
                           ),
                         ),
                       );
@@ -509,8 +521,9 @@ class _ClientHomePageState extends State<ClientHomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ClientRequestEditPage(
+                          builder: (context) => ClientRequestEditPage(
                             serviceType: 'Plumbing',
+                            user: currentUser,
                           ),
                         ),
                       );
@@ -524,8 +537,9 @@ class _ClientHomePageState extends State<ClientHomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ClientRequestEditPage(
+                          builder: (context) => ClientRequestEditPage(
                             serviceType: 'Electrical',
+                            user: currentUser,
                           ),
                         ),
                       );
