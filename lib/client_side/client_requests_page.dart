@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import '../users_data/user_model.dart';
 import '../requests_data/request_model.dart';
 import '../requests_data/requests_database.dart';
+import 'client_home_page.dart';
+import 'client_profile_page.dart';
 
 class ClientRequestsPage extends StatefulWidget {
   final User user;
@@ -17,6 +19,7 @@ class ClientRequestsPage extends StatefulWidget {
 class _ClientRequestsPageState extends State<ClientRequestsPage> {
   List<Request> _requests = [];
   final TextEditingController _searchController = TextEditingController();
+  int _selectedIndex = 1; // Set to 1 since this is the Requests page
 
   @override
   void initState() {
@@ -377,6 +380,51 @@ class _ClientRequestsPageState extends State<ClientRequestsPage> {
     );
   }
 
+  void _onNavItemTapped(int index) async {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    switch (index) {
+      case 0: // Home
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ClientHomePage(user: widget.user),
+          ),
+        );
+        break;
+      case 1: // Requests
+        // Already on requests, do nothing
+        break;
+      case 2: // Inbox
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Inbox coming soon!'),
+            backgroundColor: Colors.black,
+            duration: Duration(seconds: 1),
+          ),
+        );
+        // Reset selection back to requests
+        setState(() {
+          _selectedIndex = 1;
+        });
+        break;
+      case 3: // Profile
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfilePage(user: widget.user),
+          ),
+        );
+        // Reset selection back to requests after returning
+        setState(() {
+          _selectedIndex = 1;
+        });
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -536,6 +584,46 @@ class _ClientRequestsPageState extends State<ClientRequestsPage> {
               ),
             ],
           ),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF2D7A5E),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: const Color(0xFF2D7A5E),
+          selectedItemColor: Colors.white,
+          unselectedItemColor: Colors.white70,
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
+          currentIndex: _selectedIndex,
+          onTap: _onNavItemTapped,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assignment),
+              label: 'Requests',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.inbox),
+              label: 'Inbox',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+          ],
         ),
       ),
     );
